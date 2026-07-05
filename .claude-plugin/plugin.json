@@ -1,0 +1,13 @@
+{
+  "name": "prior-art",
+  "version": "0.1.0",
+  "description": "Study how the best already solved it, then copy what works. UI mode harvests reference interfaces (HTML, CSS, design tokens) from excellent brands into a gitignored .ref/ archive with a curated audit; research mode finds 3-5 strong implementations of anything else (architecture, hardware, best-known methods) and presents a copy-this recommendation before building.",
+  "author": {
+    "name": "suncloudsmoon",
+    "url": "https://github.com/suncloudsmoon"
+  },
+  "homepage": "https://github.com/suncloudsmoon/prior-art",
+  "repository": "https://github.com/suncloudsmoon/prior-art",
+  "license": "MIT",
+  "keywords": ["references", "design", "swipe-file", "research", "prior-art", "design-tokens", "best-known-methods"]
+}
