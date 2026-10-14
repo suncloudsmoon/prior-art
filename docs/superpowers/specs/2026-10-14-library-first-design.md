@@ -41,7 +41,7 @@ Claude reaches for an existing solution (this codebase, the standard library, an
 | `hooks/hooks.json` | new | `SessionStart` (matcher `startup\|resume\|clear\|compact`) and `SubagentStart` (no matcher, so every agent type) each run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/inject.py" <event>`, timeout 10 s. Auto-loaded from the plugin root, so no manifest key. |
 | `hooks/inject.py` | new, ~8 lines | Reads `library-first.md`, prints `{"hookSpecificOutput": {"hookEventName": <event>, "additionalContext": <text>}}`. JSON is required because `SubagentStart` ignores plain stdout. Only this one field is emitted, so nothing is duplicated when combined with other plugins' output. Doesn't read stdin. |
 | `hooks/library-first.md` | new, ~475 tokens | The convention text. Single source of truth. |
-| `skills/prior-art/SKILL.md` | edit | Description: replace "is about to build something where proven examples surely exist" with hard-to-undo choices, and say routine library checks are handled inline by the convention. Stays under the 1,536-character listing cap (currently 1,045). Body: a short "Always on" section on where research mode stops and the convention takes over. |
+| `skills/prior-art/SKILL.md` | unchanged | The planned description narrowing was dropped during implementation; see "Changes during implementation". |
 | `README.md` | edit | Document the always-on convention: what it does, ~475 tokens per session and per subagent, needs `python3`, how to turn it off (disable the plugin). |
 | `.claude-plugin/plugin.json` | edit | Version 0.2.0, description, keywords. |
 | `.gitignore` | edit | Add `evals/results/`. |
@@ -88,7 +88,7 @@ Hard-to-undo choices (a framework, a datastore, an architecture) go through the 
 | With | Interaction |
 |---|---|
 | ponytail | Same order plus one rung (well-known library for >~20 lines or a listed area). Both forbid adding a dependency for trivial code. |
-| superpowers | Its rule to load any skill that might apply would make prior-art fire on every helper. The narrowed description, plus the convention saying routine checks happen inline, keep research mode for hard-to-undo choices. |
+| superpowers | Feared: its rule to load any skill that might apply would make prior-art's research mode fire on routine helpers. Measured: it doesn't (see "Changes during implementation"), so the skill description stays as it was. The convention routes only hard-to-undo choices to research mode. |
 | any plugin | Hook outputs are combined. Only `hookSpecificOutput.additionalContext` is emitted, wrapped under its own heading. |
 
 ## Verification
@@ -132,6 +132,16 @@ Before the evals: `claude plugin validate .`, run `inject.py` for both events an
 - **An opt-out switch.** Disabling the plugin does that.
 - **A Codex port.**
 - **Updating the separate `plugins` marketplace repo's description.**
+
+## Changes during implementation
+
+**The skill description is unchanged (2026-10-14).** Before editing it, a control test checked the feared failure:
+
+- **Setup:** an isolated session with superpowers 6.4.1, ponytail 5.2.0 and this plugin (convention hooks active, original description), on `claude-haiku-5-5`.
+- **Prompt:** "In utils.py, add a function that retries a flaky callable with exponential backoff." Turn cap 4, 5 runs.
+- **Result:** prior-art was invoked in 0 of 5 runs. Four runs invoked `superpowers:test-driven-development`, one invoked no skill, and all five went straight to the task.
+
+With no failure in the control, there was nothing for the narrowing to fix, so it wasn't written. If research-mode detours show up later, the eval suite (which allows the `Skill` tool) surfaces them, and the fix is a one-line description edit.
 
 ## Risks
 
