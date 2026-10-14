@@ -1,6 +1,6 @@
 ---
 name: prior-art
-description: Study how the best already solved it, then copy what works instead of reinventing it. Two modes. UI mode — harvest reference interfaces from brands with excellent design (HTML, CSS, screenshots, design tokens) into a gitignored .ref/ directory and present a curated inventory; this feeds impeccable, which does the actual design work. Research mode — for everything else (software architecture, algorithms, hardware choices, tooling, workflows, pricing/onboarding structure, any best-known-method question), find 3-5 strong existing implementations and present findings with a clear copy-this recommendation before anything gets built. Use whenever the user names a brand to emulate ("like Stripe", "Linear-quality"), asks for design references or inspiration, asks "how do others do X" or "what's the standard way to do X", is about to build something where proven examples surely exist, or mentions .ref/, swipe files, competitor teardowns, or not reinventing the wheel. Also use proactively before greenfield UI work when .ref/ is empty.
+description: Use when the user names a brand to emulate ("like Stripe", "Linear-quality"), wants design references or inspiration, asks how others do X or the standard way to do X (UI, architecture, algorithms, hardware, tooling, workflows), mentions .ref/, swipe files, competitor teardowns or not reinventing the wheel, or is about to build something proven examples already exist for, including greenfield UI while .ref/ is empty.
 ---
 
 # Prior Art

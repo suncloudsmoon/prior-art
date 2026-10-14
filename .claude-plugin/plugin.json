@@ -1,6 +1,6 @@
 {
   "name": "prior-art",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Study how the best already solved it, then copy what works. An always-on library-first convention steers Claude and its subagents to the standard library, installed dependencies and well-known libraries before hand-rolling code. UI mode harvests reference interfaces (HTML, CSS, design tokens) from excellent brands into a gitignored .ref/ archive with a curated audit; research mode finds 3-5 strong implementations of anything else (architecture, hardware, best-known methods) and presents a copy-this recommendation before building.",
   "author": {
     "name": "suncloudsmoon",
