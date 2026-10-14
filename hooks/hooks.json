@@ -1,0 +1,28 @@
+{
+  "description": "prior-art: adds the library-first convention to every session and subagent",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.py\" SessionStart",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.py\" SubagentStart",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
