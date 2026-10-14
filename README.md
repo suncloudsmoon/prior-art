@@ -55,6 +55,8 @@ At session start, and whenever Claude starts a subagent, a hook adds [`hooks/lib
 
 The convention is self-contained, so it works on its own and alongside other plugins that add session context. It needs `python3` on your PATH. To turn it off, disable the plugin: `claude plugin disable prior-art@suncloudsmoon`.
 
+Measured with `claude plugin eval` (8 cases × 3 runs per arm, regex graders, 2026-10-14): Haiku 5.5 scores 0.85 without the plugin and 1.00 with it; Sonnet 5.5 scores 0.81 without and 1.00 with. The gains come from the cases where both models otherwise hand-roll: retries with exponential backoff (0.00 → 1.00 on both) and sorting release tags with `semver` already installed, delegated to a subagent (Haiku 0.83 → 1.00, Sonnet 0.50 → 1.00). In the other five library cases, both models already reach for the standard library or the installed package. The over-correction control (no new dependency for a one-liner) passes with the plugin on both. Cases and fixtures live in `evals/`.
+
 ## Bundled tooling
 
 `scripts/harvest.py` — stdlib-only Python (no installs). Fetches a page, downloads its linked and `@import`ed stylesheets plus referenced fonts/images, rewrites URLs so the copy opens locally, extracts a raw token dump, and writes a manifest including anything that failed. Degrades gracefully: JS-heavy sites still yield their CSS and tokens, and the skill falls back to WebFetch when direct network access isn't available.
