@@ -16,7 +16,7 @@ Claude reaches for an existing solution (this codebase, the standard library, an
 ## Constraints
 
 - **Standalone.** Works with no other plugin installed. The injected text names no other plugin.
-- **Composes with superpowers and ponytail.** No contradiction with ponytail's ladder (codebase → stdlib → installed dependency → minimal code, "never add a dependency for a few lines"). Routine checks don't route into superpowers-style heavy flows. Its context stacks with theirs (~800 + ~700 tokens, measured), so it stays the smallest of the three.
+- **Composes with superpowers and ponytail.** Follows ponytail's ladder (codebase → stdlib → installed dependency → minimal code) and agrees with its "never add a dependency for a few lines" outside the listed areas. Inside them it deliberately prefers a well-known library (see "Changes during implementation"). Routine checks don't route into superpowers-style heavy flows. Its context stacks with theirs (~800 + ~700 tokens, measured), so it stays the smallest of the three.
 - **No new runtime.** The hooks only `cat` pre-built JSON, so they need nothing beyond the shell Claude Code already uses (`sh`, Git Bash or PowerShell).
 
 ## Why the plugin can't do this today
@@ -87,7 +87,7 @@ Hard-to-undo choices (a framework, a datastore, an architecture) go through the 
 
 | With | Interaction |
 |---|---|
-| ponytail | Same order plus one rung (well-known library for >~20 lines or a listed area). Both forbid adding a dependency for trivial code. |
+| ponytail | Same order plus one rung (well-known library for >~20 lines or a listed area). Outside the listed areas both forbid adding a dependency for a few lines. Inside them prior-art deliberately prefers the library, so with both installed they disagree only there. |
 | superpowers | Feared: its rule to load any skill that might apply would make prior-art's research mode fire on routine helpers. Measured: it doesn't (see "Changes during implementation"), so the skill description stays as it was. The convention routes only hard-to-undo choices to research mode. |
 | any plugin | Hook outputs are combined. Only `hookSpecificOutput.additionalContext` is emitted, wrapped under its own heading. |
 
@@ -109,6 +109,7 @@ A `claude plugin eval` suite in `evals/`. Each case has:
 | `py-retry` | `requirements.txt` with requests only | `tenacity`, `backoff`, `stamina` or urllib3 `Retry`; no `time.sleep` |
 | `subagent-semver-installed` | `package.json` with semver; sort release tags, asked to delegate | imports `semver`; `Agent` tool used |
 | `control-no-new-dep` | `package.json` with empty dependencies, "capitalize each word" | dependencies still empty |
+| `py-retry-new-dep` (added after review) | `requirements.txt` with `click` only; client uses stdlib `urllib.request` | imports `tenacity`, `backoff`, `stamina` or `urllib3`; `requirements.txt` lists it; no `sleep(` |
 
 Run each model with the built-in with/without-plugin arms:
 
@@ -142,6 +143,15 @@ Before the evals: `claude plugin validate .`, run both hook commands and check t
 - **Result:** prior-art was invoked in 0 of 5 runs. Four runs invoked `superpowers:test-driven-development`, one invoked no skill, and all five went straight to the task.
 
 With no failure in the control, there was nothing for the narrowing to fix, so it wasn't written. If research-mode detours show up later, the eval suite (which allows the `Skill` tool) surfaces them, and the fix is a one-line description edit.
+
+**In listed areas, a library beats a few lines (after review, 2026-10-14).** Step 4 adds a well-known library for anything in a listed area, even when a few handwritten lines would do. That contradicts ponytail's "never add a dependency for a few lines" inside the listed areas, which the original constraint missed. The convention wins there on purpose:
+
+- The user asked for more library use.
+- These areas are where short hand-rolled code hides bugs: retry semantics, version ordering, quoting.
+
+The `py-retry-new-dep` case checks the outcome. With no HTTP library installed, the model should add a retry library to the manifest and use it.
+
+Result (3 runs per arm on each model): without the plugin, Haiku 5.5 and Sonnet 5.5 hand-rolled a sleep loop in every run; with it, both added and used a retry library in every run (0.00 → 1.00 on both).
 
 ## Risks
 

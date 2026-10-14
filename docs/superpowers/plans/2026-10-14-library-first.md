@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - The injected text names no other plugin (prior-art is standalone).
-- Nothing in the convention contradicts "never add a dependency for a few lines".
+- Nothing in the convention contradicts "never add a dependency for a few lines". *(Revised after review: this holds outside the listed areas only. See the spec's "Changes during implementation".)*
 - Runtime: `python3` standard library only. No new dependencies anywhere in the plugin.
 - Hook stdout is exactly `{"hookSpecificOutput": {"hookEventName": <event>, "additionalContext": <convention>}}`, with no other fields.
 - `SessionStart` matcher is `startup|resume|clear|compact`. `SubagentStart` has no matcher. Each hook's `timeout` is `10`.
