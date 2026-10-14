@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,16 +18,17 @@ def hook_config(event):
     return entry, hook
 
 
-def run_hook(event, plugin_root=ROOT):
-    """Run the hook command as Claude Code does: via a shell, from the user's project, with hook input on stdin."""
+def run_hook(event, plugin_root=ROOT, path=None):
+    """Run the hook as Claude Code does on macOS/Linux: substitute ${CLAUDE_PLUGIN_ROOT}, then `sh -c` from the user's project with hook input on stdin."""
     _, hook = hook_config(event)
+    command = hook["command"].replace("${CLAUDE_PLUGIN_ROOT}", str(plugin_root))
+    env = {**os.environ, "PATH": path} if path else None
     with tempfile.TemporaryDirectory() as project:
         return subprocess.run(
-            ["bash", "-c", hook["command"]],
+            ["/bin/sh", "-c", command],
             input=json.dumps({"hook_event_name": event, "cwd": project}),
-            capture_output=True, text=True, timeout=10, check=True, cwd=project,
-            env={**os.environ, "CLAUDE_PLUGIN_ROOT": str(plugin_root)},
-        ).stdout
+            capture_output=True, text=True, timeout=10, cwd=project, env=env,
+        )
 
 
 def convention(plugin_root=ROOT):
@@ -34,10 +36,12 @@ def convention(plugin_root=ROOT):
 
 
 class HookTests(unittest.TestCase):
-    def assert_injects(self, stdout, event, plugin_root=ROOT):
-        self.assertTrue(stdout.isascii())
-        self.assertEqual(json.loads(stdout), {"hookSpecificOutput": {
-            "hookEventName": event, "additionalContext": convention(plugin_root)}})
+    def assert_injects(self, result, event, plugin_root=ROOT):
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.isascii())
+        self.assertEqual(json.loads(result.stdout), {"hookSpecificOutput": {
+            "hookEventName": event, "additionalContext": convention(plugin_root)}},
+            "hook output is stale: run `python3 hooks/build.py` after editing library-first.md")
 
     def test_session_start_injects_convention(self):
         entry, hook = hook_config("SessionStart")
@@ -51,16 +55,24 @@ class HookTests(unittest.TestCase):
         self.assertEqual(hook["timeout"], 10)
         self.assert_injects(run_hook("SubagentStart"), "SubagentStart")
 
+    def test_hooks_run_without_python(self):
+        with tempfile.TemporaryDirectory() as bin_dir:
+            os.symlink(shutil.which("cat"), Path(bin_dir) / "cat")
+            for event in ("SessionStart", "SubagentStart"):
+                self.assert_injects(run_hook(event, path=bin_dir), event)
+
     def test_convention_fits_context_cap(self):
         self.assertLess(len(convention()), CONTEXT_CAP)
 
-    def test_runs_from_spaced_path_with_non_ascii_text(self):
+    def test_build_and_hooks_handle_spaced_path_and_non_ascii_text(self):
         with tempfile.TemporaryDirectory() as tmp:
             spaced = Path(tmp) / "plugin root with spaces"
             shutil.copytree(ROOT / "hooks", spaced / "hooks")
             with open(spaced / "hooks" / "library-first.md", "a", encoding="utf-8") as f:
                 f.write("Prices like 1.234,50 € — fine.\n")
-            self.assert_injects(run_hook("SubagentStart", spaced), "SubagentStart", spaced)
+            subprocess.run([sys.executable, spaced / "hooks" / "build.py"], check=True, timeout=10)
+            for event in ("SessionStart", "SubagentStart"):
+                self.assert_injects(run_hook(event, spaced), event, spaced)
 
 
 if __name__ == "__main__":

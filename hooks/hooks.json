@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.py\" SessionStart",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.json\"",
             "timeout": 10
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.py\" SubagentStart",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start.json\"",
             "timeout": 10
           }
         ]

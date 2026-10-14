@@ -17,7 +17,7 @@ Claude reaches for an existing solution (this codebase, the standard library, an
 
 - **Standalone.** Works with no other plugin installed. The injected text names no other plugin.
 - **Composes with superpowers and ponytail.** No contradiction with ponytail's ladder (codebase → stdlib → installed dependency → minimal code, "never add a dependency for a few lines"). Routine checks don't route into superpowers-style heavy flows. Its context stacks with theirs (~800 + ~700 tokens, measured), so it stays the smallest of the three.
-- **No new runtime.** The plugin already needs `python3` for `harvest.py`; nothing else gets added.
+- **No new runtime.** The hooks only `cat` pre-built JSON, so they need nothing beyond the shell Claude Code already uses (`sh`, Git Bash or PowerShell).
 
 ## Why the plugin can't do this today
 
@@ -38,11 +38,11 @@ Claude reaches for an existing solution (this codebase, the standard library, an
 
 | File | Change | Responsibility |
 |---|---|---|
-| `hooks/hooks.json` | new | `SessionStart` (matcher `startup\|resume\|clear\|compact`) and `SubagentStart` (no matcher, so every agent type) each run `python3 "${CLAUDE_PLUGIN_ROOT}/hooks/inject.py" <event>`, timeout 10 s. Auto-loaded from the plugin root, so no manifest key. |
-| `hooks/inject.py` | new, ~8 lines | Reads `library-first.md`, prints `{"hookSpecificOutput": {"hookEventName": <event>, "additionalContext": <text>}}`. JSON is required because `SubagentStart` ignores plain stdout. Only this one field is emitted, so nothing is duplicated when combined with other plugins' output. Doesn't read stdin. |
+| `hooks/hooks.json` | new | `SessionStart` (matcher `startup\|resume\|clear\|compact`) and `SubagentStart` (no matcher, so every agent type) each run `cat "${CLAUDE_PLUGIN_ROOT}/hooks/<event>.json"` (`session-start.json`, `subagent-start.json`), timeout 10 s. Auto-loaded from the plugin root, so no manifest key. |
+| `hooks/build.py`, `hooks/session-start.json`, `hooks/subagent-start.json` | new | `build.py` (maintainer tool, standard library only) writes each payload as ASCII JSON: `{"hookSpecificOutput": {"hookEventName": <event>, "additionalContext": <library-first.md>}}`. JSON is required because `SubagentStart` ignores plain stdout. Only this one field is emitted, so nothing is duplicated when combined with other plugins' output. The tests fail if a payload is stale. Replaced the original `inject.py` after review: a hook that needs `python3` errors visibly on every start where `python3` doesn't resolve (Windows without Python, an uninstalled pyenv version). |
 | `hooks/library-first.md` | new, ~475 tokens | The convention text. Single source of truth. |
 | `skills/prior-art/SKILL.md` | unchanged | The planned description narrowing was dropped during implementation; see "Changes during implementation". |
-| `README.md` | edit | Document the always-on convention: what it does, ~475 tokens per session and per subagent, needs `python3`, how to turn it off (disable the plugin). |
+| `README.md` | edit | Document the always-on convention: what it does, ~475 tokens per session and per subagent, how to turn it off (disable the plugin). |
 | `.claude-plugin/plugin.json` | edit | Version 0.2.0, description, keywords. |
 | `.gitignore` | edit | Add `evals/results/`. |
 | `evals/` | new | Eval suite described below. |
@@ -123,7 +123,7 @@ Bash is deliberately not granted. Without network access, a `pip install` or `np
 
 `--max-cost-usd 20` is a ceiling per model (8 cases × 3 runs × 2 arms = 48 runs), not an estimate.
 
-Before the evals: `claude plugin validate .`, run `inject.py` for both events and check that the JSON parses and the text is under the 10,000-character cap, and do one live session with `--plugin-dir .` to confirm the context arrives.
+Before the evals: `claude plugin validate .`, run both hook commands and check that the JSON parses and the text is under the 10,000-character cap, and do one live session with `--plugin-dir .` to confirm the context arrives.
 
 ## Out of scope
 
@@ -145,7 +145,7 @@ With no failure in the control, there was nothing for the narrowing to fix, so i
 
 ## Risks
 
-- **No `python3` on PATH:** the hook errors without blocking and the convention silently doesn't load.
+- **Stale payloads:** editing `library-first.md` without running `build.py` ships the old text. The tests catch it.
 - **Managed hook restrictions:** `allowManagedHooksOnly` in managed settings blocks plugin hooks.
 - **Prompt-injection defenses:** if Haiku treats the attributed text as an injection anyway, the with-plugin scores will show it, and the wording changes before shipping.
 - **Over-correction (unneeded dependencies):** guarded by the control case and the "one line" rule.
