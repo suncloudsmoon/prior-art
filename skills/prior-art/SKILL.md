@@ -1,6 +1,6 @@
 ---
 name: prior-art
-description: Use when the user names a brand to emulate ("like Stripe", "Linear-quality"), wants design references or inspiration, asks how others do X or the standard way to do X (UI, architecture, algorithms, hardware, tooling, workflows), mentions .ref/, swipe files, competitor teardowns or not reinventing the wheel, or is about to build something proven examples already exist for, including greenfield UI while .ref/ is empty.
+description: Use when the user names a brand as the bar to match ("like Stripe", "Linear-quality", "Vercel level"), wants design references or inspiration, asks how others do X or the standard way to do X (UI, architecture, algorithms, hardware, tooling, workflows), mentions .ref/, swipe files, competitor teardowns or not reinventing the wheel, or is about to build something proven examples already exist for. For new UI, use it before any design or planning work starts, while .ref/ is empty.
 ---
 
 # Prior Art

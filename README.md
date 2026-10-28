@@ -71,6 +71,7 @@ python3 -m unittest discover -s tests -v   # hook wiring
 claude plugin validate .                    # manifest, hooks, skill
 claude plugin eval . --allow-tools Write Edit --scaffold --trust-plugin \
   --model claude-haiku-5-5 --no-publish --max-cost-usd 20   # library-first evals, with vs. without the plugin
+TRIGGER_PLUGIN_DIR=. python3 tests/triggers/run_trigger_eval.py claude-haiku-5-5   # skill fires when it should, not otherwise (paid)
 ```
 
 ## License

@@ -1,3 +1,5 @@
 .DS_Store
 evals/results/
 __pycache__/
+.ref/
+tests/triggers/results-*.json
