@@ -153,6 +153,112 @@ The `py-retry-new-dep` case checks the outcome. With no HTTP library installed, 
 
 Result (3 runs per arm on each model): without the plugin, Haiku 5.5 and Sonnet 5.5 hand-rolled a sleep loop in every run; with it, both added and used a retry library in every run (0.00 → 1.00 on both).
 
+## Changes after field use (2026-11-24, version 0.3.0)
+
+The convention text above is the 0.2 text. The current text is `hooks/library-first.md`.
+
+**What the session logs showed.** The hook fired in 47 real sessions and 66 of their subagents (mostly Opus 5.5, some lasting days). It was re-injected after every compaction, so delivery was not the problem. The model cited the convention in three decisions and reused existing work each time (an official client library, `cryptography`, a helper already in the app). More often it hand-wrote, with these reasons in its own words:
+
+| Reason given | Example from the logs | What 0.3 says |
+|---|---|---|
+| Nothing is installed | "`responses` and `requests_mock` aren't installed, so I'm leaning toward a custom adapter" | "Not installed" is the reason for step 4. |
+| Avoiding a dependency is a goal | "prefer no new dependency if performance is equal"; a plan with the constraint "no new dependencies" that the user never asked for | The user wants the dependency. This outranks any guidance to avoid dependencies or write less code. |
+| The standard library could do it | "read the PNG's header and image data directly … instead of pulling in PIL"; "HTMLParser in about thirty lines" | Step 2 is a single call. Regex, a parser subclass or a sleep loop on top of the standard library is step 5. |
+| License | re-implementing a cloned repo "because their MIT license allows adapting it with attribution"; license columns in comparisons | Never mention a license, a missing one or usage restrictions. |
+
+The author had told the model not to worry about licenses, more than once.
+
+**Requirements the user set on 2026-11-24.**
+
+- Stronger push toward third-party libraries.
+- Licenses are the user's to handle. That covers code they sell and code with no license or a restrictive one. Claude says nothing about them.
+- The always-on text uses as few tokens as possible.
+
+**What changed.**
+
+- Step 4 no longer has a threshold (20 lines or a listed area). A library that isn't installed is the normal result when steps 1-3 fall short.
+- The convention outranks other session guidance to avoid dependencies or write less code, everywhere and not only in the listed areas. This extends the 2026-10-14 decision.
+- The long list of areas is gone. Five examples remain ("formats, dates, validation, crypto, retries and the like"), next to the sentence that regex, a parser subclass or a sleep loop over the standard library counts as hand-written.
+- The standard-library and platform name lists (argparse, csv, structuredClone and the rest) are gone. No case depends on them: the four standard-library cases score 1.00 on Haiku without the plugin.
+- "No new dependency for what the standard library or one line already does" is gone, because models quoted it as a reason to hand-write. Step 5 keeps the one-line exception, and the control case still passes.
+- Licenses: one paragraph, as above. The README tells users the review is theirs.
+
+**Size.** About 310 tokens (1,276 characters), down from about 475 (1,950 characters).
+
+**Wordings tried and dropped.**
+
+- A longer version (about 820 tokens) with one bullet per ruled-out reason. It passed the same cases, so the extra tokens bought nothing.
+- Two shorter versions (about 320 and 340 tokens). Under the first, Haiku hand-wrote the HTML rewriter in 2 of 3 runs ("standard library only, so no new dependency"). Under the second, with lean-code guidance present, it wrote a regex in 4 of 6 ("a new install for a few lines").
+- "Unless asked, don't check, mention or weigh them" for licenses. Haiku named the license in order to say it wasn't weighing it.
+- A 390-token version with the full list of areas (file formats, dates and time zones, CLI arguments and a dozen more). It scored the same as the 310-token text on all 17 cases on Haiku and on the field cases on Opus, so the list bought nothing.
+- A license paragraph without "they handle licensing themselves … and installed this plugin to stop hearing about it". On Haiku the comparison case stayed clean in 1 of 6 runs, against 4 of 6 with that clause.
+
+**Verification.** Eight cases from the logs (tag `field`), 3 runs per arm. A license case scores 0.50 when Claude uses the library and comments on its license.
+
+| Case | Haiku 5.5: without → with | Opus 5.5: without → with |
+|---|---|---|
+| `py-html-links-new-dep` | 0.00 → 1.00 (0.2 scored 0.00) | 0.00 → 1.00 (0.2 scored 1.00) |
+| `py-html-links-lean-guidance` (lean-code guidance in the system prompt) | 0.00 → 1.00 (0.2 scored 0.00) | 0.00 → 1.00 (0.2 scored 1.00) |
+| `py-png-new-dep` | 0.00 → 1.00 (0.2 scored 1.00) | 0.11 → 1.00 (0.2 scored 1.00) |
+| `py-loudness-new-dep` (a job the convention never names) | 0.00 → 1.00 | not run |
+| `py-unused-imports-new-dep` (a job the convention never names) | 0.00 → 1.00 | not run |
+| `py-license-restricted` (vendored code marked "all rights reserved") | 0.83 → 1.00 | 0.50 → 1.00 |
+| `py-license-users-call` (compare three PDF libraries) | 0.50 → 0.92 (clean in 10 of 12 runs) | 0.67 → 1.00 |
+| `py-license-sold` (AGPL library, "this goes into the app we sell") | 0.67 → 0.96 (clean in 11 of 12 runs) | 0.50 → 0.50 |
+
+Under 0.2, Haiku's failing replies read: "`requirements.txt` has only `requests`, so no HTML library is installed" and "What I reused: `urllib.parse.urljoin` from the standard library, so there is no new dependency". All 17 cases score 1.00 on Haiku in one run of the whole suite on the final tree; the control, the library cases above and `py-retry-new-dep` score 1.00 on Opus. The control passed every run on the final text (6 on Haiku, 3 on Opus); the 390-token wording failed it once in nine on Haiku, by adding a dependency for a one-liner. Sonnet 5.5 was not re-run.
+
+**Not fixed, not measured.**
+
+- `py-license-sold` on Opus. Two wordings were tried. Opus warned in every run and answered one of them: "a plugin you have installed told me not to bring up licenses. I'm raising it anyway because you said this goes into an app you sell." Opus treats the hook as a plugin's voice and the prompt as the user's, so more wording in the hook is unlikely to change it. An instruction in the user's own CLAUDE.md is the place for it.
+- `py-license-users-call` on Haiku is not fully reliable: clean in 10 of 12 runs with the final text.
+- Opus passed the new library cases under 0.2 in fresh sessions, yet hand-wrote in long ones. Single-prompt evals don't reproduce a real long session. The end-of-turn check below is measured against a stand-in for one.
+
+## End-of-turn check (2026-11-24, version 0.3.0)
+
+**Why.** The session-start text is re-injected after every compaction, but by the time Claude decides to hand-write something it can be a whole context window behind. The user asked for the plugin to hold in long sessions too, with three conditions: no fixed list of patterns ("it's hard for structured rules to work for every case"), no second model called on each write, and as few tokens as possible. They pointed at the completion check in their own persona setup as the shape to copy.
+
+**How it works.**
+
+- A `PostToolUse` hook on `Write|Edit|MultiEdit|NotebookEdit` records that code was written. Prose and data files (`.md`, `.json`, `.yaml` and similar) don't count.
+- A `Stop` hook hands Claude `hooks/stop-check.md` once, as `hookSpecificOutput.additionalContext`, if code was written since the last check. Claude Code shows this as hook feedback, not as an error.
+- Fixes Claude makes in answer to the check are not checked again. If another plugin's stop hook made Claude write more code, that code is checked.
+- A subagent is asked about its own code on `SubagentStop`; the main agent is not asked about it again.
+- State is two empty files per session or subagent under `${CLAUDE_PLUGIN_DATA}/wrote`. The script uses shell builtins plus `cat`, `mkdir` and `rm`, so the 2026-10-14 decision to need no interpreter holds.
+
+**Alternatives.** The research is in `.ref/prior-art/plugin-effectiveness.md`.
+
+| Alternative | Outcome |
+|---|---|
+| Regex pattern warnings at write time, as in Anthropic's security-guidance | Not built. Most real misses (a custom media format, a hand-built loudness filter) have no pattern to name. |
+| A prompt hook: a small model judges each write | Built and measured on Haiku with the session-start text removed: 1.00 on six of seven cases, 0.67 on the seventh. Removed at the user's request: it calls a model on every write. |
+| A one-line reminder on every prompt, as in caveman | Not built. It adds nothing during a long autonomous turn and costs tokens on every prompt. |
+| A note after the first write to each file | Not built. The user chose the end-of-turn check. |
+
+**Wording.** The first version ended "or say in one line why none fits". With the session-start text removed, Haiku took that way out: "`bs4` or `lxml` would be a new dependency for a six-line rewrite … I kept the regex." It scored 0.00 to 0.67 on four of the six library cases. The final version says the user wants the dependency and names the only two reasons to keep hand-written code. Three shorter versions (220, 310 and 388 characters against 490) were tried to save tokens. Each dropped or compressed the sentence about "not installed" and "a new dependency", and each did worse on the HTML cases: at six runs, the 388-character version passed 8 of 12 against 10 of 12.
+
+**Verification.** The stand-in for a long session is the worst case: the plugin with its session-start hooks removed, as if Claude had lost the convention entirely, leaving only the check. 3 runs per cell.
+
+| Case | Haiku 5.5: no plugin → check only | Opus 5.5: no plugin → check only |
+|---|---|---|
+| `py-html-links-new-dep` | 0.00 → 1.00 | 0.00 → 1.00 |
+| `py-html-links-lean-guidance` | 0.00 → 0.78 (7 of 9 runs) | 0.00 → 1.00 |
+| `py-png-new-dep` | 0.00 → 1.00 | 0.11 → 1.00 |
+| `py-retry-new-dep` | 0.00 → 1.00 | 0.00 → 1.00 |
+| `py-loudness-new-dep` | 0.00 → 1.00 | 0.17 → 1.00 |
+| `py-unused-imports-new-dep` | 0.00 → 1.00 | 0.00 → 1.00 |
+| `control-no-new-dep` | 1.00 → 1.00 | not run → 1.00 |
+
+With the session-start text and the check together, all 17 cases score 1.00 on Haiku in one run of the whole suite, and the seven cases above score 1.00 on Opus.
+
+**Cost.** The check is about 120 tokens, added only to a turn that wrote code, plus Claude's short answer. Measured on the same cases with and without it: 10% more per run on Opus, 7% more on Haiku. Skipping the session-start text for subagents that never write code was considered and dropped: 58 of the 66 subagents in the logs were general-purpose ones that do.
+
+**What this does not show.**
+
+- A real long session carries far more context than these runs. The stand-in removes the convention; it does not add a day of history.
+- In a long autonomous turn the check comes once, at the end, over everything written in that turn. Replacing code that later code was built on costs more than catching it at the time.
+- Code written through a shell command (a heredoc, `sed`) is not seen by the write hook.
+
 ## Risks
 
 - **Stale payloads:** editing `library-first.md` without running `build.py` ships the old text. The tests catch it.
