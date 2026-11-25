@@ -1,5 +1,5 @@
 {
-  "description": "prior-art: adds the library-first convention to every session and subagent",
+  "description": "prior-art: adds the library-first convention to every session and subagent, and has Claude check the code it wrote against it before finishing",
   "hooks": {
     "SessionStart": [
       {
@@ -19,6 +19,40 @@
           {
             "type": "command",
             "command": "cat \"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-start.json\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-check.sh\" mark",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-check.sh\" stop",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-check.sh\" subagent-stop",
             "timeout": 10
           }
         ]
