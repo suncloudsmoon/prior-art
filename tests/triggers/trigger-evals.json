@@ -21,5 +21,8 @@
   {"query": "Implement the login screen from DESIGN.md. The tokens and layout are already decided, just build it.", "should_trigger": false},
   {"query": "We're building the dashboard for our analytics product from zero and it has to feel as good as Stripe's dashboard.", "should_trigger": true},
   {"query": "new landing page for my indie app, I want it at the level of Linear's site. where do we start?", "should_trigger": true},
-  {"query": "Our landing page already follows DESIGN.md. Tighten the hero spacing a bit on mobile.", "should_trigger": false}
+  {"query": "Our landing page already follows DESIGN.md. Tighten the hero spacing a bit on mobile.", "should_trigger": false},
+  {"query": "Each chat in my app should run in its own Linux container on the user's machine, with no internet access. I want the container solution to be cross platform and not something heavy.", "should_trigger": true},
+  {"query": "I'm adding a chat mode to my app where a local model calls tools in a loop, like Claude Code does: MCP servers, a CLI, skills, memory files and subagents. Design the harness.", "should_trigger": true},
+  {"query": "Implement stream_chat() in model_client.py. The chat talks to the model through the OpenAI API, streamed.", "should_trigger": false}
 ]

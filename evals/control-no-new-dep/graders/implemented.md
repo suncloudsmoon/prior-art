@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: 'toUpperCase\('
+pattern: 'to(?:Locale)?UpperCase\('
 target:
   source: file
   path: text.js
