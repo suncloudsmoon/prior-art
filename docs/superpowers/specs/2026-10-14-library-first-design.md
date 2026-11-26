@@ -259,6 +259,87 @@ With the session-start text and the check together, all 17 cases score 1.00 on H
 - In a long autonomous turn the check comes once, at the end, over everything written in that turn. Replacing code that later code was built on costs more than catching it at the time.
 - Code written through a shell command (a heredoc, `sed`) is not seen by the write hook.
 
+## Reuse wording and the plan check (2026-11-25, version 0.4.0)
+
+**What the session log showed.** One four-day session in another project ran 0.2.2 for three days and 0.3.0 for the last.
+
+- Under 0.2.2 it hand-wrote a streaming client for the OpenAI API on top of an installed HTTP client, chose to write its own agent loop from a list of options written from memory, and recorded "our own adapters are the default, and a library is the exception".
+- It made seven web searches in four days, none of them for a library, and ran research mode once.
+- After 0.3.0 loaded, the end-of-turn check fired nine times and led to three swaps to libraries.
+- The build-it-ourselves decisions were made in turns that presented options or wrote a spec. Those turns wrote no code, so they got no check.
+
+**Requirements the user set on 2026-11-25.**
+
+- Emphasize reuse, not only libraries: "APIs, patterns and others that just work", with no fixed list of what counts.
+- Claude should look for what exists: search the web, and use what it already knows.
+- Check plans and specs at the end of a turn too. It must work with planning skills from other plugins and without them.
+
+**What changed in the session-start text.** It is now headed "Reuse-first".
+
+- The opening names what to reuse ("code, libraries, SDKs, APIs, patterns, anything proven") and adds "Before you design, plan or write more than a line or two, name what exists for the job; you know more than you use."
+- Step 4 reads "A maintained library or official SDK" and ends "Search the web before deciding none exists."
+- The last line is an instruction: "Before designing a subsystem or picking a framework, datastore or architecture, run the prior-art skill's research mode."
+- The file is still `hooks/library-first.md`.
+
+**Size.** 476 tokens (1,488 characters), up from 404. Token figures in the earlier sections were estimated from character counts at about 4.1 characters per token, which runs about a quarter low. These are measured: the same one-line prompt was sent with each text loaded as the session-start text, and the size of the first request compared. Haiku 5.5 and Fable 5.2 give the same counts. The 0.3.0 text is 404 tokens (the earlier sections say about 310), the code check 145 (they say about 120) and the plan check 184.
+
+**Wordings tried and dropped.**
+
+- Two longer ones (1,567 and 1,545 characters), which added "raw HTTP to an API that has an SDK" and "reference implementation of an API or spec". They scored the same as the final text, so the extra words bought nothing. 0.3.0 already scores 1.00 on the API cases.
+- A shorter one (1,400 characters) without the sentence about naming what exists: 0.58 on the design case on Haiku in 3 runs, against 0.93 for the texts that have it.
+- The final text without "more than a line or two" (1,464 characters). It added a dependency for a one-line job once in 33 runs of the control. The final text did so in none of 27, and 0.3.0 in none of 15.
+
+**The plan check.** `hooks/plan-check.md`, 184 tokens, delivered the same way as the code check.
+
+- The write hook records a Markdown file (`.md`, `.mdx`) as a document. Markdown under a hidden folder doesn't count: that is a tool's own notes, such as memory files and `.ref/` research. The path is read from the project root, and from inside a worktree, so a worktree under a hidden folder still counts.
+- At the end of a turn, written code gets the code check. A turn that wrote only a document gets the plan check. A turn that wrote both gets the code check alone, so ticking off steps in a plan while implementing it doesn't re-open the plan.
+- The check ends "If the document is not a plan or design, just finish", so Claude decides whether a README edit is a plan. There is no list of folder or file names.
+- It names no other plugin. A planning skill that writes its plan to a Markdown file gets the check because of the file, not because of the skill.
+
+**Alternatives for the plan check.**
+
+| Alternative | Outcome |
+|---|---|
+| Fire only for paths that contain words such as `plan`, `spec` or `design` | Not built. A fixed list misses documents named any other way, and the user had refused fixed rules for the code check for the same reason. |
+| Fire only when a document is created, not when it is edited | Not built. In the session log a spec was created before most of its decisions were made. |
+| Fire on every turn that ends | Not built. It costs tokens on every turn. |
+
+In the four-day log the rule as built would have fired on five turns, all of them specs or plans, and skipped four turns that wrote only memory files.
+
+**Verification.** 3 runs per cell unless stated, web tools granted. Scores are with the plugin; "none" is without it.
+
+| Case | Haiku 5.5: none | Haiku: 0.3.0 | Haiku: final text | Fable 5.2: 0.3.0 | Fable 5.2: new text |
+|---|---|---|---|---|---|
+| `design-agent-loop-search` (how should the agent loop be built) | 0.33 to 0.56 | 0.56 over 9 runs; web search and research mode in 0 of 9 | 0.93 over 9 runs; web search and research mode in 7 of 9 | 1.00 | 1.00 |
+| `py-skills-spec-search` (implement a published spec) | 0.00 to 0.11 | 0.78, looked it up in 1 of 3 | 0.89, looked it up in 2 of 3 | looked it up in 3 of 3 | 1.00 |
+| `py-openai-stream-new-dep` | 0.00 to 0.44 | 1.00 | 1.00 | 1.00 (0.00 without) | not run |
+| `py-stripe-invoices-new-dep` | 0.00 to 0.22 | 1.00 | 1.00 | 1.00 (0.00 without) | not run |
+
+- The 0.2.2 text scores 0.33 on both API cases on Haiku, which matches what the session did under it.
+- The Fable runs of the new text used the 1,464-character wording, five words short of the final one.
+- Skill triggers, in a setup with other plugins installed (26 prompts, 3 runs each, Haiku): all 14 that should fire do, and all 12 that shouldn't don't. The agent-loop design prompt fires research mode in 3 of 3 runs. Under 0.3.0 it fired in 0 of 3.
+- Needless searches: on four simple tasks with web search available (the control, two standard-library cases, the retry case), the new text searched once in 12 runs.
+- The whole suite on the final tree, one run on Haiku (22 cases, 3 runs each): 21 cases score 1.00 with the plugin and `py-skills-spec-search` scores 0.89. The control passes. Two cases were run again on their own, because the working tree was briefly changed while the suite ran: `js-currency` scored 1.00, and the design case is reported above over its 9 runs.
+
+The plan check, on `plan-openai-stream-check` (write the plan for a streaming OpenAI client, with only an HTTP client installed), 6 runs per cell on Haiku:
+
+| No plugin | Plan check only (session-start text removed) | Whole plugin |
+|---|---|---|
+| 0.33 | 0.92 | 0.92 |
+
+In the check-only runs Claude first planned raw HTTP ("avoids a new runtime dependency"), got the check, searched the web and rewrote the plan around the SDK. The sixth run switched to a different library instead of the SDK. In the whole-suite run the case scores 0.00 without the plugin and 1.00 with it.
+
+One real session, in a setup where another plugin's planning skill is installed: the skill wrote its plan to a Markdown file under `docs/`, the Stop hook delivered the plan check (623 characters in the debug log), Claude revised the plan, and the next stop was not checked again. A second Stop hook from another plugin fired at the same stop, and Claude answered both.
+
+**What this does not show.**
+
+- On Fable 5.2 in a fresh session 0.3.0 already scores 1.00 on the design and API cases, so the new wording shows no gain there. The gain is on Haiku.
+- A turn that only presents options in chat writes nothing and gets no check. The check comes when the choice is written into a plan or spec.
+- A plan written through a shell command is not seen by the write hook.
+- The plan check was not run on Fable or Opus.
+- A first round of runs granted no web tools, and every text looked as if it never searched. Listing `WebSearch` in a case's `prompt.md` is not enough: pass `--allow-tools Write Edit WebFetch WebSearch`.
+- A model-judged grader for "looked it up" marked runs that had fetched the specification as failures. It was replaced with a `tool_used` grader.
+
 ## Risks
 
 - **Stale payloads:** editing `library-first.md` without running `build.py` ships the old text. The tests catch it.
