@@ -1,4 +1,4 @@
-"""Checks the hook wiring that injects the library-first convention."""
+"""Checks the hook wiring that injects the reuse-first convention."""
 import json
 import os
 import shutil
@@ -76,7 +76,7 @@ class HookTests(unittest.TestCase):
 
 
 class StopCheckTests(unittest.TestCase):
-    """The library-first check Claude gets before it finishes a turn that wrote code."""
+    """The check Claude gets before it finishes a turn that wrote code, or only a plan or spec."""
 
     def setUp(self):
         data = tempfile.TemporaryDirectory()
@@ -90,12 +90,12 @@ class StopCheckTests(unittest.TestCase):
         result = self.fire("PostToolUse", tool_name="Write", tool_input={"file_path": file_path, "content": "x = 1\n"}, **fields)
         self.assert_silent(result)
 
-    def assert_asks(self, result, event):
+    def assert_asks(self, result, event, check="stop-check.md"):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), {"hookSpecificOutput": {
             "hookEventName": event,
-            "additionalContext": (ROOT / "hooks" / "stop-check.md").read_text(encoding="utf-8")}},
-            "hook output is stale: run `python3 hooks/build.py` after editing stop-check.md")
+            "additionalContext": (ROOT / "hooks" / check).read_text(encoding="utf-8")}},
+            f"hook output is stale: run `python3 hooks/build.py` after editing {check}")
 
     def assert_silent(self, result):
         self.assertEqual((result.returncode, result.stdout), (0, ""), result.stderr)
@@ -113,9 +113,39 @@ class StopCheckTests(unittest.TestCase):
 
     def test_silent_when_the_turn_wrote_no_code(self):
         self.assert_silent(self.fire("Stop", stop_hook_active=False))
-        for prose_or_data in ("/project/README.md", "/project/config.json", "/project/notes.txt"):
-            self.write(prose_or_data)
+        for data_or_notes in ("/project/config.json", "/project/notes.txt"):
+            self.write(data_or_notes)
         self.assert_silent(self.fire("Stop", stop_hook_active=False))
+
+    def test_asks_about_the_plan_when_the_turn_wrote_only_a_document(self):
+        self.write("/project/docs/specs/chat-design.md")
+        self.assert_asks(self.fire("Stop", stop_hook_active=False), "Stop", "plan-check.md")
+        self.write("/project/docs/specs/chat-design.md")
+        self.assert_silent(self.fire("Stop", stop_hook_active=True))
+        self.assert_silent(self.fire("Stop", stop_hook_active=False))
+
+    def test_code_outranks_a_document_written_in_the_same_turn(self):
+        self.write("/project/docs/plans/chat.md")
+        self.write()
+        self.assert_asks(self.fire("Stop", stop_hook_active=False), "Stop")
+        self.assert_silent(self.fire("Stop", stop_hook_active=False))
+
+    def test_documents_under_hidden_folders_are_a_tools_own_notes(self):
+        for notes in ("/project/.claude/agent-memory/main/user.md", "/home/u/.claude/plans/a.md", "/project/.ref/prior-art/queues.md",
+                      "C:\\project\\.claude\\memory\\user.md"):
+            self.write(notes)
+        self.assert_silent(self.fire("Stop", stop_hook_active=False))
+
+    def test_a_document_in_a_worktree_or_a_hidden_project_still_counts(self):
+        self.write("/project/.claude/worktrees/chat/docs/specs/chat-design.md")
+        self.assert_asks(self.fire("Stop", stop_hook_active=False), "Stop", "plan-check.md")
+        self.write("/home/u/.config/app/docs/plan.md", cwd="/home/u/.config/app")
+        self.assert_asks(self.fire("Stop", stop_hook_active=False), "Stop", "plan-check.md")
+
+    def test_subagent_answers_for_its_own_plan(self):
+        self.write("/project/docs/plans/chat.md", agent_id="agent-7", agent_type="Plan")
+        self.assert_silent(self.fire("Stop", stop_hook_active=False))
+        self.assert_asks(self.fire("SubagentStop", stop_hook_active=False, agent_id="agent-7"), "SubagentStop", "plan-check.md")
 
     def test_fixes_made_in_answer_to_the_check_are_not_checked_again(self):
         self.write()

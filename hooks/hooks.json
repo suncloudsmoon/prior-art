@@ -1,5 +1,5 @@
 {
-  "description": "prior-art: adds the library-first convention to every session and subagent, and has Claude check the code it wrote against it before finishing",
+  "description": "prior-art: adds the reuse-first convention to every session and subagent, and has Claude check the code or plan it wrote against it before finishing",
   "hooks": {
     "SessionStart": [
       {
